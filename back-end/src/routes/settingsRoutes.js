@@ -1,0 +1,11 @@
+const express = require('express');
+const authenticate = require('../middlewares/authenticate');
+const { requireRole } = require('../middlewares/verify_role');
+const controller = require('../controllers/settingsSectionController');
+const { requirePermission } = require('../middlewares/permissions');
+const router = express.Router();
+router.use(authenticate, requireRole('Administrator', 'Manager'));
+router.get('/:section', requirePermission('settings:read'), controller.get);
+router.put('/:section', requirePermission('settings:write'), controller.update);
+router.patch('/:section', requirePermission('settings:write'), controller.update);
+module.exports = router;

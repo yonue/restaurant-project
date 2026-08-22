@@ -1,0 +1,12 @@
+const express = require('express');
+const authenticate = require('../middlewares/authenticate');
+const controller = require('../controllers/employeeShiftController');
+const { requirePermission } = require('../middlewares/permissions');
+const router = express.Router();
+router.use(authenticate);
+router.use(requirePermission('employees:write'));
+router.get('/', controller.list);
+router.post('/', controller.create);
+router.put('/:id', controller.update);
+router.delete('/:id', controller.remove);
+module.exports = router;

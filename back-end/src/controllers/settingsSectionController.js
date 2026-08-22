@@ -1,0 +1,14 @@
+const { RestaurantSettings } = require('../models');
+const { hasAnyRole } = require('../utils/roles');
+const columns = { Restaurant: 'restaurant_settings', Horaires: 'schedule_settings', 'Site web': 'website_settings', Notifications: 'notification_settings', Apparence: 'appearance_settings', Sécurité: 'security_settings' };
+const allowed = user => hasAnyRole(user, ['Administrator', 'Manager']);
+const parse = value => { try { return value ? JSON.parse(value) : {}; } catch { return {}; } };
+function fallback(section, settings) {
+  if (section === 'Restaurant') return { name: settings.restaurant_name, description: settings.description || '', phone: settings.phone || '', email: settings.email || '', address: settings.address || '', logo: settings.logo || '' };
+  if (section === 'Horaires') return { hours: settings.opening_hours || '' };
+  if (section === 'Site web') return { displayName: settings.restaurant_name, logo: settings.logo || '', banner: settings.banner || '', ...parse(settings.website_content) };
+  return {};
+}
+async function row() { let settings = await RestaurantSettings.findOne(); if (!settings) settings = await RestaurantSettings.create({ restaurant_name: "L'Élixir" }); return settings; }
+exports.get = async (req, res) => { if (!allowed(req.user)) return res.status(403).json({ message: 'Accès refusé.' }); const section = req.params.section; const column = columns[section]; if (!column) return res.status(404).json({ message: 'Section introuvable.' }); const settings = await row(); const stored = parse(settings[column]); res.json({ section, data: Object.keys(stored).length ? stored : fallback(section, settings) }); };
+exports.update = async (req, res) => { if (!allowed(req.user)) return res.status(403).json({ message: 'Accès refusé.' }); const section = req.params.section; const column = columns[section]; if (!column) return res.status(404).json({ message: 'Section introuvable.' }); if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) return res.status(400).json({ message: 'Données invalides.' }); const settings = await row(); const changes = { [column]: JSON.stringify(req.body) }; if (section === 'Restaurant') Object.assign(changes, { restaurant_name: req.body.name ?? settings.restaurant_name, description: req.body.description ?? settings.description, phone: req.body.phone ?? settings.phone, email: req.body.email ?? settings.email, address: req.body.address ?? settings.address, logo: req.body.logo ?? settings.logo }); if (section === 'Horaires' && req.body.hours !== undefined) changes.opening_hours = String(req.body.hours); if (section === 'Site web') Object.assign(changes, { restaurant_name: req.body.displayName ?? settings.restaurant_name, logo: req.body.logo ?? settings.logo, banner: req.body.banner ?? settings.banner, website_content: JSON.stringify(req.body) }); await settings.update(changes); res.json({ message: 'Section enregistrée.', section, data: req.body }); };

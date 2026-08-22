@@ -1,0 +1,14 @@
+const express = require('express');
+const authenticate = require('../middlewares/authenticate');
+const controller = require('../controllers/businessHoursController');
+const { requireAdmin } = require('../middlewares/permissions');
+const router = express.Router();
+router.get('/public', controller.public);
+router.use(authenticate);
+router.use(requireAdmin);
+router.get('/manage', controller.manage);
+router.put('/schedule', controller.saveSchedule);
+router.post('/exceptions', controller.createException);
+router.put('/exceptions/:id', controller.updateException);
+router.delete('/exceptions/:id', controller.deleteException);
+module.exports = router;
